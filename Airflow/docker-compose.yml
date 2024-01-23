@@ -1,0 +1,64 @@
+version: '3.8'
+
+x-airflow-common:
+  &airflow-common
+  build: ./workers
+  user: "1000:0"
+  environment:
+    - LOAD_EX=n
+    - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres/airflow
+    - AIRFLOW__CELERY__BROKER_URL=redis://redis:6379/0
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./workers/beam:/opt/airflow/workers/beam
+  networks:
+    - airflow_net
+
+services:
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+    networks:
+      - airflow_net
+
+  redis:
+    image: "redis:6-alpine"
+    ports:
+      - "6379:6379"
+    networks:
+      - airflow_net
+
+  airflow-webserver:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8081:8080"
+    command: webserver
+
+  airflow-scheduler:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+    command: scheduler
+
+  airflow-worker:
+    <<: *airflow-common
+    depends_on:
+      - postgres
+      - redis
+    command: celery worker
+
+networks:
+  airflow_net:
+    external: true

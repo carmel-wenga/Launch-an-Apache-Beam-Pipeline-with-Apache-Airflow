@@ -6,14 +6,14 @@ from airflow.hooks.base_hook import BaseHook
 
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(2024, 1, 20, 20, 30, 30),
+    'start_date': datetime(year=2024, month=1, day=23, hour=22, minute=15),
     'retries': 1,
-    'retry_delay': timedelta(minutes=1),
+    'retry_delay': timedelta(minutes=1)
 }
 
 target_db_parameters = BaseHook.get_connection('target_db_id')
 
-with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule='@once',
+with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
     description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres database'
 ) as dag:
 

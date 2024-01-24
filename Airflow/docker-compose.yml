@@ -6,6 +6,10 @@ x-airflow-common:
   user: "1000:0"
   environment:
     - LOAD_EX=n
+    - _AIRFLOW_DB_MIGRATE=true
+    - _AIRFLOW_WWW_USER_CREATE=true
+    - _AIRFLOW_WWW_USER_USERNAME=airflow
+    - _AIRFLOW_WWW_USER_PASSWORD=airflow
     - AIRFLOW__CORE__EXECUTOR=CeleryExecutor
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
     - AIRFLOW__CELERY__RESULT_BACKEND=db+postgresql://airflow:airflow@postgres/airflow

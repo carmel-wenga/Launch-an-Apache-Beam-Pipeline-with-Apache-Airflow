@@ -1,7 +1,6 @@
 version: '3.8'
 
-x-airflow-common:
-  &airflow-common
+x-airflow-base: &airflow-common
   build: ./workers
   user: "1000:0"
   environment:

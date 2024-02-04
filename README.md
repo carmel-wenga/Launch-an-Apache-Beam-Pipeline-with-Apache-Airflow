@@ -7,13 +7,15 @@ The beam pipeline used here is the one defined in
 Check it out if you want to know more.
 
 ## Dependencies
-* python:3.8 and beyond
-* airflow:2.8.1
-* apache-beam:2.52.0
+* python==3.8
+* airflow==2.8.1
+* apache-beam==2.52.0
+* apache-airflow-providers-apache-beam==5.5.0
+* apache-airflow-providers-postgres==5.10.0
 
 ## Project structure
 ```commandline
-RootFolder
+Launch-an-Apache-Beam-Pipeline-with-Apache-Airflow
 ├── Airflow
 │   ├── dags
 │   │   └── run_beam_pipeline.py
@@ -99,7 +101,13 @@ On the menu, go to ```Admin >> Connections``` and add a new postgres connection 
 
 Or simply run the command below to create the connection id
 ```commandline
-docker-compose exec airflow-webserver bash -c "airflow connections add 'target_db_id' --conn-type 'postgres' --conn-schema 'beam_db' --conn-login 'beam_user' --conn-password 'ra5hoxetRami5' --conn-host 'target_db' --conn-port '5432'"
+docker-compose exec airflow-webserver bash -c "airflow connections add 'target_db_id' \
+--conn-type 'postgres' \
+--conn-schema 'beam_db' \
+--conn-login 'beam_user' \
+--conn-password 'ra5hoxetRami5' \
+--conn-host 'target_db' \
+--conn-port '5432'"
 ```
 
 ## Run the Airflow DAG

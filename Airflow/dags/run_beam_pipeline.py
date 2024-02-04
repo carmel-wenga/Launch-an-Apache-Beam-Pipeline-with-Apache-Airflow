@@ -2,7 +2,10 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.apache.beam.operators.beam import BeamRunPythonPipelineOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.python import PythonOperator
 from airflow.hooks.base_hook import BaseHook
+
+import os
 
 default_args = {
     'owner': 'airflow',
@@ -13,11 +16,23 @@ default_args = {
 
 target_db_parameters = BaseHook.get_connection('target_db_id')
 
+def check_file_exists(**kwargs):
+    file_path = kwargs.get("file_path")
+    if not os.path.exists(file_path):
+        return ValueError(f"No such file or directory: {file_path}")
+
 with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
     description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres database'
 ) as dag:
 
-    # Task to create the salary table into the target PostgreSQL database
+    # Check if the source csv file exists
+    check_file_existence = PythonOperator(
+        task_id='check_if_the_source_file_exists',
+        python_callable=check_file_exists,
+        op_kwargs={'file_path': '/opt/airflow/workers/beam/source/salary_data.csv'}
+    )
+
+    # create the salary table into the target Postgres database if it doesn't exist
     create_salary_table = PostgresOperator(
         task_id='create_salary_table',
         postgres_conn_id='target_db_id',
@@ -55,4 +70,4 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
         py_system_site_packages=False
     )
 
-    create_salary_table >> launch_apache_beam
+    check_file_existence >> create_salary_table >> launch_apache_beam

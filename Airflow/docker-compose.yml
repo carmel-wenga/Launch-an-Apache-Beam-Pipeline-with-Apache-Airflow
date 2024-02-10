@@ -5,7 +5,6 @@ x-airflow-base: &airflow-common
   user: "1000:0"
   environment:
     - LOAD_EX=n
-    - _AIRFLOW_DB_MIGRATE=true
     - _AIRFLOW_WWW_USER_CREATE=true
     - _AIRFLOW_WWW_USER_USERNAME=airflow
     - _AIRFLOW_WWW_USER_PASSWORD=airflow

@@ -9,7 +9,7 @@ import os
 
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(year=2024, month=1, day=23, hour=22, minute=15),
+    'start_date': datetime(year=2100, month=1, day=1, hour=00, minute=00),
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -19,7 +19,7 @@ target_db_parameters = BaseHook.get_connection('target_db_id')
 def check_file_exists(**kwargs):
     file_path = kwargs.get("file_path")
     if not os.path.exists(file_path):
-        return ValueError(f"No such file or directory: {file_path}")
+        return FileNotFoundError(f"No such file or directory: {file_path}")
 
 with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
     description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres database'
@@ -51,6 +51,7 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
     launch_apache_beam = BeamRunPythonPipelineOperator(
         task_id='launch_apache_beam',
         py_file='/opt/airflow/workers/beam/pipeline.py',
+        runner="DirectRunner",
         py_options=[],
         pipeline_options={
             'source': '/opt/airflow/workers/beam/source/salary_data.csv',
@@ -66,7 +67,7 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
             'beam-postgres-connector==0.1.3',
             'psycopg2-binary==2.9.9'
         ],
-        py_interpreter='python3',
+        py_interpreter='python3.8',
         py_system_site_packages=False
     )
 

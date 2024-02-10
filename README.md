@@ -82,9 +82,17 @@ docker network.
 
 
 ## Launch Apache Airflow
-Launch Apache Airflow with the command below
 
-```commandline
+### Apply database migrations
+```shell
+docker compose run airflow-webserver airflow db init
+```
+This command applies database migration necessary for the web server to run.
+
+### Start Airflow
+Launch Apache Airflow with the docker compose command:
+
+```shell
 docker compose up
 ```
 and open the admin web UI with ```localhost:8081```. The default username is ```airflow```, 
@@ -112,16 +120,24 @@ docker-compose exec airflow-webserver bash -c "airflow connections add 'target_d
 
 ## Run the Airflow DAG
 You can now run your dag by clicking on the **Run** button or scheduling the dag on the 
-```run_beam_pipeline.py``` script.
+```run_beam_pipeline.py``` script. By default, I configured the pipeline to run ```once``` on the ```2100-01-01T00:00```
+using the ```start_date``` and ```schedule_interval``` parameters. Change the ```start_date``` parameter to run at 
+you ease.
 
-By default the dag should run once, due the value of the schedule_interval parameter of the dag
 ```python
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(year=2100, month=1, day=1, hour=00, minute=00),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=1)
+}
+...
 with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
     description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres database'
 ) as dag:
     ...
 ```
-You can change with the following value to run the dag every 5 minutes for example.
+You can also change the schedule interval as follows to run the dag every 5 minutes for example.
 ```commandline
 schedule_interval='*/5 * * * *'
 ```

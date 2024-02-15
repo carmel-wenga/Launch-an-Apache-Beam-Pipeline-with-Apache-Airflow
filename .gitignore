@@ -3,4 +3,4 @@
 # ignore logs files from airflow
 Airflow/logs/*
 
-Airflow/dags/__pycache__
+Airflow/dags/__pycache__/*

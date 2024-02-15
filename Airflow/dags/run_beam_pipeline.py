@@ -3,28 +3,34 @@ from airflow import DAG
 from airflow.providers.apache.beam.operators.beam import BeamRunPythonPipelineOperator
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.operators.python import PythonOperator
-from airflow.hooks.base_hook import BaseHook
+# from airflow.hooks.base_hook import BaseHook
+from airflow.models.connection import Connection
 
+import pendulum
 import os
 
+paris_tz = pendulum.timezone('Europe/Paris')
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(year=2100, month=1, day=1, hour=00, minute=00),
+    'start_date': datetime(year=2024, month=2, day=15, hour=5, minute=2, tzinfo=paris_tz),
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
 
-target_db_parameters = BaseHook.get_connection('target_db_id')
+# target_db_parameters = BaseHook.get_connection('target_db_id')
+target_db_parameters = Connection.get_connection_from_secrets('target_db_id')
+
 
 def check_file_exists(**kwargs):
     file_path = kwargs.get("file_path")
     if not os.path.exists(file_path):
         return FileNotFoundError(f"No such file or directory: {file_path}")
 
-with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
-    description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres database'
-) as dag:
 
+with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interval='@once',
+         description='A simple DAG to run a Beam pipeline that reads data from a csv file and load into a postgres '
+                     'database'
+         ) as dag:
     # Check if the source csv file exists
     check_file_existence = PythonOperator(
         task_id='check_if_the_source_file_exists',

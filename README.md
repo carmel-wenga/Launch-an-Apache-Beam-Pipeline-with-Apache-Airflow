@@ -18,8 +18,9 @@ Check it out if you want to know more.
 Launch-an-Apache-Beam-Pipeline-with-Apache-Airflow
 ├── Airflow
 │   ├── dags
-│   │   └── run_beam_pipeline.py
 │   ├── docker-compose.yml
+│   ├── staging_dags
+│   │   └── run_beam_pipeline.py
 │   ├── logs
 │   └── workers
 │       ├── beam
@@ -30,6 +31,7 @@ Launch-an-Apache-Beam-Pipeline-with-Apache-Airflow
 │       └── requirements.txt
 ├── README.md
 └── TargetDB
+
 ```
 
 ___
@@ -46,7 +48,9 @@ ___
 Folder ***Airflow*** contains all the necessary files to launch Apache Airflow and 
 run airflow dags. The ***airflow*** instance is launched with the 
 ```RootFolder/Airflow/docker-compose.yml``` file.
-* The ```dags``` folder contains the airflow pipelines,
+* The ```dags``` folder is dedicated to contain the airflow dags,
+* The ```staging_dags``` folder is a staging area for reviewing airflow dags before moving them to the ```dags``` 
+folder for execution by the airflow scheduler,
 * The ```logs``` is designed to contains airflow pipeline executions logs,
 * ```workers``` contains necessary the files to set the workers environment (install 
 airflow plugins and requirements) and the apache beam pipelines to run.
@@ -85,19 +89,20 @@ docker network.
 
 ### Apply database migrations
 ```shell
-docker compose run airflow-webserver airflow db init
+docker compose run airflow-webserver airflow db migrate
 ```
 This command applies database migration necessary for the web server to run.
 
 ### Start Airflow
-Launch Apache Airflow with the docker compose command:
+Launch Apache Airflow in detach mode with the docker compose command:
 
 ```shell
-docker compose up
+docker compose up -d
 ```
 and open the admin web UI with ```localhost:8081```. The default username is ```airflow```, 
 same for the password.
 
+### Create Airflow connection object for the target database
 On the menu, go to ```Admin >> Connections``` and add a new postgres connection with the following values:
 * Connection Id: ```target_db_id```
 * Connection Type: ```Postgres```
@@ -107,7 +112,7 @@ On the menu, go to ```Admin >> Connections``` and add a new postgres connection 
 * Password: ```ra5hoxetRami5```
 * Port: ```5432```
 
-Or simply run the command below to create the connection id
+Or run the command below to create the connection id
 ```commandline
 docker-compose exec airflow-webserver bash -c "airflow connections add 'target_db_id' \
 --conn-type 'postgres' \
@@ -118,11 +123,32 @@ docker-compose exec airflow-webserver bash -c "airflow connections add 'target_d
 --conn-port '5432'"
 ```
 
+### Create the airflow variables that are used in the DAG
+* The ```sink_postgres_table``` variable sets the name of the destination table: "**salary_data**" is this case, but you can set 
+anything you want. The table will be automatically created in the target postgres database,
+* The ```source_csv_file``` variable contains the path to the source csv file,
+* The ```beam_pipeline_py_file``` variable contains the path to the beam pipeline launched by airflow.
+
+```shell
+docker compose exec airflow-webserver bash -c "airflow variables set sink_postgres_table salary_data"
+docker compose exec airflow-webserver bash -c "airflow variables set source_csv_file /opt/airflow/workers/beam/source/salary_data.csv"
+docker compose exec airflow-webserver bash -c "airflow variables set beam_pipeline_py_file /opt/airflow/workers/beam/pipeline.py"
+```
+
 ## Run the Airflow DAG
-You can now run your dag by clicking on the **Run** button or scheduling the dag on the 
-```run_beam_pipeline.py``` script. By default, I configured the pipeline to run ```once``` on the ```2100-01-01T00:00```
-using the ```start_date``` and ```schedule_interval``` parameters. Change the ```start_date``` parameter to run at 
-you ease.
+
+### Copy/Move the run_beam_pipeline.py DAG from the staging to the dags folder
+```shell
+$ cd Launch an Apache Beam Pipeline with Apache Airflow/Airflow
+$ mv staging_dags/run_beam_pipeline.py dags/
+```
+
+It will take 3-5 min for airflow to detect the dags.
+
+### Schedule the DAG
+You can run your dag by clicking on the **Run** button or just schedule the dag by changing the the ```start_date``` 
+and ```schedule_interval``` parameters of the DAG object. By default, I configured the pipeline to run ```once``` on 
+the ```2100-01-01T00:00```. Change the ```start_date``` parameter to run at you ease.
 
 ```python
 default_args = {
@@ -140,4 +166,44 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
 You can also change the schedule interval as follows to run the dag every 5 minutes for example.
 ```commandline
 schedule_interval='*/5 * * * *'
+```
+
+### Inspect the sink table & check the result
+Connect to the target_db container
+
+```shell
+docker exec -it target_db bash
+```
+1. The connect to the postgres database
+```shell
+psql -U beam_user -d beam_db
+```
+2. Use the ```\d``` to list the tables and confirm that the table defined by the sink_postgres_table variable has 
+been created.
+```shell
+            List of relations
+ Schema |    Name     | Type  |   Owner   
+--------+-------------+-------+-----------
+ public | salary_data | table | beam_user
+(1 row)
+```
+3. Run the ```select``` query to confirm that the data from the csv file have beam copied to the target table
+```shell
+select * from salary_table;
+```
+```shell
+ age | gender | education_level |               job_title               | year_of_experience | salary 
+-----+--------+-----------------+---------------------------------------+--------------------+--------
+  32 | Male   | Bachelor        | Software Engineer                     |                  5 |  90000
+  28 | Female | Master          | Data Analyst                          |                  3 |  65000
+  45 | Male   | PhD             | Senior Manager                        |                 15 | 150000
+  36 | Female | Bachelor        | Sales Associate                       |                  7 |  60000
+  52 | Male   | Master          | Director                              |                 20 | 200000
+  29 | Male   | Bachelor        | Marketing Analyst                     |                  2 |  55000
+  42 | Female | Master          | Product Manager                       |                 12 | 120000
+  31 | Male   | Bachelor        | Sales Manager                         |                  4 |  80000
+  26 | Female | Bachelor        | Marketing Coordinator                 |                  1 |  45000
+  38 | Male   | PhD             | Senior Scientist                      |                 10 | 110000
+  29 | Male   | Master          | Software Developer                    |                  3 |  75000
+
 ```

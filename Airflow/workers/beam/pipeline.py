@@ -9,6 +9,7 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions
 from beam_postgres.io import WriteToPostgres
 
+
 class MyPipelineOptions(PipelineOptions):
     @classmethod
     def _add_argparse_args(cls, parser):
@@ -19,6 +20,7 @@ class MyPipelineOptions(PipelineOptions):
         parser.add_argument('--table_name')
         parser.add_argument('--username')
         parser.add_argument('--password')
+
 
 def parse_data(input_str):
 

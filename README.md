@@ -48,7 +48,7 @@ ___
 Folder ***Airflow*** contains all the necessary files to launch Apache Airflow and 
 run airflow dags. The ***airflow*** instance is launched with the 
 ```RootFolder/Airflow/docker-compose.yml``` file.
-* The ```dags``` folder is dedicated to contain the airflow dags,
+* The ```dags``` folder is dedicated to containing the airflow dags,
 * The ```staging_dags``` folder is a staging area for reviewing airflow dags before moving them to the ```dags``` 
 folder for execution by the airflow scheduler,
 * The ```logs``` is designed to contains airflow pipeline executions logs,

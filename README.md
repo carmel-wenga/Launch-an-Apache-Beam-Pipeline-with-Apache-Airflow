@@ -178,7 +178,7 @@ docker exec -it target_db bash
 ```shell
 psql -U beam_user -d beam_db
 ```
-2. Use the ```\d``` to list the tables and confirm that the table defined by the sink_postgres_table variable has 
+2. Use the ```\d``` command to list the relations (tables) and confirm that the table defined by the sink_postgres_table variable has 
 been created.
 ```shell
             List of relations
@@ -207,3 +207,5 @@ select * from salary_table;
   29 | Male   | Master          | Software Developer                    |                  3 |  75000
 
 ```
+#### Author
+***Christian Carmel WENGA***

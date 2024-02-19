@@ -8,15 +8,21 @@ from airflow.models.connection import Connection
 import pendulum
 import os
 
-paris_tz = pendulum.timezone('Europe/Paris')
+tz = pendulum.timezone('Europe/Paris')
 default_args = {
     'owner': 'airflow',
-    'start_date': datetime(year=2024, month=2, day=15, hour=5, minute=2, tzinfo=paris_tz),
+    'start_date': datetime(year=2100, month=1, day=1, hour=00, minute=00, tzinfo=tz),
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
 
+# retrieve target database credentials from Airflow connections
 target_db_parameters = Connection.get_connection_from_secrets('target_db_id')
+
+# retrieve airflow variables for (a) the source file path (b) the target table name and (c) the beam pipeline file path
+source_csv_file = Variable.get('source_csv_file')
+sink_postgres_table = Variable.get('sink_postgres_table')
+beam_pipeline_py_file = Variable.get('beam_pipeline_py_file')
 
 
 def check_file_exists(**kwargs):
@@ -31,11 +37,10 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
          ) as dag:
 
     # TASK 1: Check if the source csv file exists. The source file path is defined by an airflow variable
-    # 'source_csv_file' (/opt/airflow/workers/beam/source/salary_data.csv)
     check_file_existence = PythonOperator(
         task_id='check_if_the_source_file_exists',
         python_callable=check_file_exists,
-        op_kwargs={'file_path': Variable.get('source_csv_file')}
+        op_kwargs={'file_path': source_csv_file}
     )
 
     # TASK 2: Create the table into the target Postgres database if it doesn't exist. The table name is defined in the
@@ -44,7 +49,7 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
         task_id='create_salary_table',
         postgres_conn_id='target_db_id',
         sql=f"""
-            CREATE TABLE IF NOT EXISTS {Variable.get('sink_postgres_table')}(
+            CREATE TABLE IF NOT EXISTS {sink_postgres_table}(
                 age INTEGER NOT NULL,
                 gender VARCHAR(10) NOT NULL,
                 education_level VARCHAR(50) NOT NULL,
@@ -56,18 +61,18 @@ with DAG(dag_id='beam_pipeline_dag', default_args=default_args, schedule_interva
     )
 
     # TASK 3: Launch the beam pipeline. the location of the beam pipeline is defined by the 'beam_pipeline_py_file'
-    # airflow variable ('/opt/airflow/workers/beam/pipeline.py')
+    # airflow variable
     launch_apache_beam = BeamRunPythonPipelineOperator(
         task_id='launch_apache_beam',
-        py_file=Variable.get('beam_pipeline_py_file'),
+        py_file=beam_pipeline_py_file,
         runner="DirectRunner",
         py_options=[],
         pipeline_options={
-            'source': Variable.get('source_csv_file'),
+            'source': source_csv_file,
             'target_host': target_db_parameters.host,
             'target_port': target_db_parameters.port,
             'db_name': target_db_parameters.schema,
-            'table_name': Variable.get('sink_postgres_table'),
+            'table_name': sink_postgres_table,
             'username': target_db_parameters.login,
             'password': target_db_parameters.password
         },
